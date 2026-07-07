@@ -1,4 +1,4 @@
-export const API_BASE = 'http://localhost:4000';
+export const API_BASE = 'https://logistics-tracker-api-rbq7.onrender.com';
 
 function getHeaders() {
   const token = localStorage.getItem('token');
