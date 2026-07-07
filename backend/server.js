@@ -177,6 +177,103 @@ app.get('/api/eta', requireAuth, async (req, res) => {
   }
 });
 
+// ---- Background Simulator Loop ----
+const simState = new Map();
+
+function getRealisticSpeed(type) {
+  switch (type) {
+    case 'motorcycle': return 55;
+    case 'car': return 60;
+    case 'van': return 50;
+    case 'truck':
+    default:
+      return 40;
+  }
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function runSimulationTick() {
+  const vehicles = store.getVehicles();
+  const routes = store.getRoutes();
+  const routesMap = new Map(routes.map(r => [r.id, r]));
+
+  for (const vehicle of vehicles) {
+    // Only simulate if the vehicle has an assigned route
+    if (!vehicle.routeId || !routesMap.has(vehicle.routeId)) continue;
+
+    const route = routesMap.get(vehicle.routeId);
+    const waypoints = route.waypoints;
+    if (!waypoints || waypoints.length < 2) continue;
+
+    // Get or initialize state for this vehicle
+    let state = simState.get(vehicle.id);
+    if (!state || state.routeId !== vehicle.routeId) {
+      state = {
+        routeId: vehicle.routeId,
+        segmentIndex: 0,
+        distanceAlongSegment: 0,
+        speedKmh: getRealisticSpeed(vehicle.type),
+      };
+      simState.set(vehicle.id, state);
+    }
+
+    // Adjust speed slightly to feel natural
+    const currentSpeed = Math.round(state.speedKmh + (Math.random() * 6 - 3));
+
+    // Distance to travel in 3 seconds: meters = (km/h / 3.6) * 3s
+    const distanceToTravel = (currentSpeed / 3.6) * 3;
+
+    let remainingDistance = distanceToTravel;
+    let segIdx = state.segmentIndex;
+    let distAlong = state.distanceAlongSegment;
+
+    while (remainingDistance > 0) {
+      const p1 = waypoints[segIdx];
+      const p2 = waypoints[(segIdx + 1) % waypoints.length];
+      const segLength = haversineMeters(p1[0], p1[1], p2[0], p2[1]);
+
+      const spaceLeft = segLength - distAlong;
+
+      if (remainingDistance < spaceLeft) {
+        distAlong += remainingDistance;
+        remainingDistance = 0;
+      } else {
+        remainingDistance -= spaceLeft;
+        distAlong = 0;
+        segIdx = (segIdx + 1) % waypoints.length;
+      }
+    }
+
+    // Save state back
+    state.segmentIndex = segIdx;
+    state.distanceAlongSegment = distAlong;
+
+    // Calculate actual coordinate
+    const p1 = waypoints[segIdx];
+    const p2 = waypoints[(segIdx + 1) % waypoints.length];
+    const segLength = haversineMeters(p1[0], p1[1], p2[0], p2[1]);
+    const t = segLength > 0 ? distAlong / segLength : 0;
+
+    const lat = lerp(p1[0], p2[0], t);
+    const lng = lerp(p1[1], p2[1], t);
+    const timestamp = Date.now();
+
+    // Store the simulated location and check geofences
+    store.addLocation(vehicle.id, lat, lng, currentSpeed, timestamp);
+    checkGeofences(vehicle.id, lat, lng);
+
+    // Broadcast update over socket
+    const payload = { vehicle_id: vehicle.id, lat, lng, speed: currentSpeed, timestamp };
+    io.emit('location-update', payload);
+  }
+}
+
+// Run simulation tick every 3 seconds
+setInterval(runSimulationTick, 3000);
+
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Logistics tracker backend running on http://localhost:${PORT}`);
