@@ -8,9 +8,9 @@ export default function VehicleList({ vehicles, selectedId, onSelect, onAddClick
     const matchesSearch = v.name.toLowerCase().includes(query.toLowerCase()) ||
       v.id.toLowerCase().includes(query.toLowerCase()) ||
       (v.driver && v.driver.toLowerCase().includes(query.toLowerCase()));
-    
+
     const matchesType = typeFilter === 'all' || v.type === typeFilter;
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -109,10 +109,64 @@ export default function VehicleList({ vehicles, selectedId, onSelect, onAddClick
                 </div>
               )}
 
-              <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 6, fontFamily: 'var(--font-mono)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
-                {v.lastLocation
-                  ? `${v.lastLocation.lat.toFixed(4)}, ${v.lastLocation.lng.toFixed(4)} · ${Math.round(speed)} km/h`
-                  : 'No location yet'}
+              {/* Road Route & Distance / ETA Badges */}
+              {(v.route?.name || v.lastLocation?.route_name) && (
+                <div style={{
+                  fontSize: 11,
+                  color: '#38bdf8',
+                  marginTop: 6,
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  padding: '3px 6px',
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  🛣️ {v.route?.name || v.lastLocation?.route_name}
+                </div>
+              )}
+
+              {v.lastLocation?.remaining_distance_km != null && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 11,
+                  marginTop: 6,
+                  color: 'var(--text-primary)',
+                  fontWeight: 500,
+                }}>
+                  <span style={{ color: 'var(--accent)' }}>
+                    📍 {v.lastLocation.remaining_distance_km} km left
+                  </span>
+                  <span style={{ color: '#e0a835' }}>
+                    ⏱️ {v.lastLocation.remaining_time_formatted || '--'}
+                  </span>
+                </div>
+              )}
+
+              {/* Road Progress Bar */}
+              {v.lastLocation?.progress_percent != null && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${v.lastLocation.progress_percent}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #1fb88a, #00f0ff)',
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 6, fontFamily: 'var(--font-mono)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                <span>
+                  {v.lastLocation
+                    ? `${v.lastLocation.lat.toFixed(4)}, ${v.lastLocation.lng.toFixed(4)}`
+                    : 'No location yet'}
+                </span>
+                <span>{Math.round(speed)} km/h</span>
               </div>
             </button>
           );

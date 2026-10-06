@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { getVehicles, getGeofences, logout, API_BASE } from './api';
+import { getVehicles, getGeofences, getRoutes, logout, API_BASE } from './api';
 import VehicleList from './components/VehicleList';
 import AlertFeed from './components/AlertFeed';
 import MapView from './components/MapView';
@@ -21,6 +21,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [vehicles, setVehicles] = useState([]);
   const [geofences, setGeofences] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [tab, setTab] = useState('live');
@@ -39,8 +40,9 @@ export default function App() {
   // Refresh lists helper
   const refreshData = () => {
     if (!token) return;
-    getVehicles().then(setVehicles).catch(() => handleLogout());
-    getGeofences().then(setGeofences).catch(() => {});
+    getVehicles().then((data) => setVehicles(Array.isArray(data) ? data : [])).catch(() => handleLogout());
+    getGeofences().then((data) => setGeofences(Array.isArray(data) ? data : [])).catch(() => {});
+    getRoutes().then((data) => setRoutes(Array.isArray(data) ? data : [])).catch(() => {});
   };
 
   useEffect(() => {
@@ -55,9 +57,12 @@ export default function App() {
 
     socket.on('location-update', (payload) => {
       setVehicles((prev) => {
+        if (!Array.isArray(prev)) return [];
         const exists = prev.some((v) => v.id === payload.vehicle_id);
         if (!exists) {
-          getVehicles().then(setVehicles).catch(() => {});
+          getVehicles().then((data) => {
+            if (Array.isArray(data)) setVehicles(data);
+          }).catch(() => {});
           return prev;
         }
         return prev.map((v) =>
@@ -81,7 +86,9 @@ export default function App() {
     setPlaybackPosition(null);
   }, [tab]);
 
-  const selectedVehicle = vehicles.find((v) => v.id === selectedId);
+  const selectedVehicle = Array.isArray(vehicles)
+    ? vehicles.find((v) => v.id === selectedId)
+    : null;
   const focusCenter = selectedVehicle?.lastLocation
     ? [selectedVehicle.lastLocation.lat, selectedVehicle.lastLocation.lng]
     : null;
@@ -112,7 +119,7 @@ export default function App() {
     <div style={{ display: 'flex', height: '100vh' }}>
       <aside
         style={{
-          width: 300,
+          width: 320,
           background: 'var(--bg-panel)',
           borderRight: '1px solid var(--border)',
           display: 'flex',
@@ -121,8 +128,8 @@ export default function App() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 16px 8px' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>Fleet tracker</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{vehicles.length} vehicles</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Fleet tracker</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{vehicles.length} vehicles active</div>
           </div>
           <button onClick={handleLogout} style={logoutButtonStyle}>Logout</button>
         </div>
@@ -163,6 +170,9 @@ export default function App() {
             <MapView
               vehicles={vehicles}
               geofences={geofences}
+              routes={routes}
+              selectedId={selectedId}
+              onSelectVehicle={setSelectedId}
               focusCenter={tab === 'live' ? focusCenter : null}
               playbackPosition={tab === 'playback' ? playbackPosition : null}
               routeGeometry={tab !== 'live' ? routeGeometry : null}

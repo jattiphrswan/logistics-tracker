@@ -97,8 +97,12 @@ export default function RouteManager({
                     }}
                   >
                     <div style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-                      {r.waypoints.length} waypoints · {r.id}
+                    <div style={{ fontSize: 11, color: '#38bdf8', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span>🛣️ {r.distanceMeters ? `${(r.distanceMeters / 1000).toFixed(1)} km` : `${r.waypoints?.length || 0} pts`}</span>
+                      {r.durationSeconds && <span>⏱️ ~{Math.round(r.durationSeconds / 60)} mins</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                      {r.roadCoordinates ? `${r.roadCoordinates.length} road coordinates (snapped)` : `${r.waypoints?.length || 0} waypoints`} · {r.id}
                     </div>
                   </div>
                 ))
@@ -112,7 +116,7 @@ export default function RouteManager({
             Drawing Mode Active
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            Click anywhere on the map to add waypoints. Connect them sequentially.
+            Click waypoints on the map. The system will automatically snap to the shortest road route and calculate real road distance & driving duration.
           </div>
 
           {error && <div style={{ fontSize: 12, color: 'var(--red)' }}>{error}</div>}
@@ -139,9 +143,12 @@ export default function RouteManager({
               disabled={loading || waypoints.length < 2 || !routeName.trim()}
               style={saveButtonStyle}
             >
-              {loading ? 'Saving...' : 'Save'}
+              {loading ? 'Snapping to road...' : 'Save Road Route'}
             </button>
-            <button onClick={handleCancel} style={cancelButtonStyle}>
+            <button
+              onClick={handleCancel}
+              style={cancelButtonStyle}
+            >
               Cancel
             </button>
           </div>
@@ -151,43 +158,8 @@ export default function RouteManager({
   );
 }
 
-const actionButtonStyle = {
-  width: '100%',
-  padding: '10px',
-  background: 'var(--accent-dim)',
-  border: '1px solid var(--accent)',
-  borderRadius: 'var(--radius)',
-  color: 'var(--accent)',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  transition: 'opacity 0.2s',
-};
-
-const saveButtonStyle = {
-  flex: 1,
-  padding: '8px',
-  background: 'var(--accent)',
-  border: 'none',
-  borderRadius: 'var(--radius)',
-  color: '#0f1720',
-  fontWeight: 600,
-  fontSize: 13,
-  cursor: 'pointer',
-};
-
-const cancelButtonStyle = {
-  flex: 1,
-  padding: '8px',
-  background: 'transparent',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  color: 'var(--text-secondary)',
-  fontSize: 13,
-  cursor: 'pointer',
-};
-
 const inputStyle = {
+  width: '100%',
   padding: '8px 10px',
   background: 'var(--bg-panel)',
   border: '1px solid var(--border)',
@@ -195,4 +167,38 @@ const inputStyle = {
   color: 'var(--text-primary)',
   fontSize: 13,
   outline: 'none',
+};
+
+const actionButtonStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  background: 'var(--accent)',
+  border: 'none',
+  borderRadius: 'var(--radius)',
+  color: '#0f1720',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const saveButtonStyle = {
+  flex: 1,
+  padding: '8px 12px',
+  background: 'var(--accent)',
+  border: 'none',
+  borderRadius: 'var(--radius)',
+  color: '#0f1720',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const cancelButtonStyle = {
+  padding: '8px 12px',
+  background: 'transparent',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  cursor: 'pointer',
 };

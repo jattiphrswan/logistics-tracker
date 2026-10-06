@@ -47,3 +47,7 @@ input, select {
 .leaflet-container {
   background: #0b1117;
 }
+
+.dark-tiles {
+  filter: brightness(0.7) invert(1) contrast(1.8) hue-rotate(180deg) saturate(0.4);
+}
